@@ -222,7 +222,7 @@ onMounted(async () => {
 
 <template>
   <div v-if="loading" class="flex items-center justify-center min-h-screen">
-    <div class="loading loading-spinner text-primary"></div>
+    <div class="loading loading-dots loading-lg text-primary"></div>
   </div>
   <div v-else class="bg-gray-900 text-white min-h-screen">
     <div class="navbar bg-base-100">
@@ -230,8 +230,8 @@ onMounted(async () => {
         <a class="btn btn-ghost normal-case text-xl">Steam Ban Tracker Web</a>
       </div>
     </div>
-    <div class="min-h-screen flex flex-col items-center justify-center">
-      <div class="mb-6 flex space-x-4">
+    <div class="flex flex-col items-center justify-center">
+      <div class="m-6 flex space-x-4">
         <button
           @click="filterDataByYear(null)"
           class="btn btn-outline btn-secondary"
@@ -251,21 +251,24 @@ onMounted(async () => {
         <canvas id="banChart" height="600"></canvas>
       </div>
     </div>
-    <div class="stats shadow mt-6">
-      <div class="stat">
-        <div class="stat-title">Total profiles tracked</div>
-        <div class="stat-value">{{ totalProfiles }}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">Total banned users</div>
-        <div class="stat-value">{{ totalBanned }}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">Banned in {{ selectedYear ?? "total" }}</div>
-        <div class="stat-value">{{ totalBannedInYear }}</div>
+    <div class="flex items-center justify-center">
+      <div class="stats shadow mt-6">
+        <div class="stat">
+          <div class="stat-title">Total profiles tracked</div>
+          <div class="stat-value">{{ totalProfiles }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-title">Total banned users</div>
+          <div class="stat-value">{{ totalBanned }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-title">Banned in {{ selectedYear ?? "total" }}</div>
+          <div class="stat-value">{{ totalBannedInYear }}</div>
+        </div>
       </div>
     </div>
   </div>
+
   <footer class="footer footer-center bg-base-100 text-white p-4">
     <aside>
       <p>Made by Dr. Agorille</p>
