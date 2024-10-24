@@ -19,27 +19,42 @@ const availableYears = ref([]);
 
 // Fonction pour récupérer les données des bans
 const fetchBans = async () => {
-  const { data, error } = await supabase
-    .from("profil")
-    .select("ban, ban_date")
-    .filter("ban", "eq", true);
+  try {
+    const { data, error } = await supabase
+      .from("profil")
+      .select("ban, ban_date")
+      .filter("ban", "eq", true);
 
-  if (error) {
-    console.error("Erreur lors de la récupération des données", error);
-    return;
+    if (error) {
+      throw new Error(
+        "Erreur lors de la récupération des données: " + error.message
+      );
+    }
+
+    if (!data) {
+      console.warn("Aucune donnée reçue de la base de données.");
+      return;
+    }
+
+    allData = data;
+    extractAvailableYears();
+    filterDataByYear();
+  } catch (err) {
+    console.error(
+      "Erreur réseau ou autre problème lors de la récupération des données",
+      err
+    );
   }
-
-  allData = data;
-  extractAvailableYears();
-  filterDataByYear();
 };
 
 // Extraire les années disponibles
 const extractAvailableYears = () => {
   const years = new Set();
   allData.forEach((record) => {
-    const yearOnly = new Date(record.ban_date).getFullYear();
-    years.add(yearOnly);
+    if (record.ban_date) {
+      const yearOnly = new Date(record.ban_date).getFullYear();
+      years.add(yearOnly);
+    }
   });
   availableYears.value = Array.from(years).sort((a, b) => a - b);
 };
@@ -51,7 +66,7 @@ const filterDataByYear = (year = null) => {
   const dateMap = {};
 
   allData.forEach((record) => {
-    if (record.ban) {
+    if (record.ban === true) {
       const dateOnly = new Date(record.ban_date).toISOString().split("T")[0];
       const yearOnly = new Date(record.ban_date).getFullYear();
       if (year === null || yearOnly === year) {
@@ -84,14 +99,23 @@ const filterDataByYear = (year = null) => {
 
 // Création du graphique
 const createChart = () => {
-  const ctx = document.getElementById("banChart").getContext("2d");
+  const canvasElement = document.getElementById("banChart");
+  if (!canvasElement) {
+    console.error("Canvas element 'banChart' not found.");
+    return;
+  }
+  const ctx = canvasElement.getContext("2d");
+  if (!ctx) {
+    console.error("Unable to get 2D context for the canvas.");
+    return;
+  }
+
   chartInstance = new Chart(ctx, {
     type: "bar",
     data: {
       labels: banDates.value,
       datasets: [
         {
-          label: "Nombre de bans",
           data: banCounts.value,
           backgroundColor: banCounts.value.map(
             (count) =>
@@ -133,9 +157,7 @@ const createChart = () => {
       },
       plugins: {
         legend: {
-          labels: {
-            color: "#ffffff",
-          },
+          display: false,
         },
       },
     },
@@ -149,12 +171,16 @@ onMounted(async () => {
 
 <template>
   <div class="bg-gray-900 text-white min-h-screen">
-    <h1 class="text-4xl font-bold text-center my-6">Steam Ban Tracker Web</h1>
+    <div class="navbar bg-base-100">
+      <div class="flex-1">
+        <a class="btn btn-ghost normal-case text-xl">Steam Ban Tracker Web</a>
+      </div>
+    </div>
     <div class="min-h-screen flex flex-col items-center justify-center">
       <div class="mb-6 flex space-x-4">
         <button
           @click="filterDataByYear(null)"
-          class="px-4 py-2 bg-gray-800 text-white border border-white rounded-md hover:bg-gray-700 transform transition-transform duration-300 hover:scale-105"
+          class="btn btn-outline btn-secondary"
         >
           Tous les années
         </button>
@@ -162,7 +188,7 @@ onMounted(async () => {
           v-for="year in availableYears"
           :key="year"
           @click="filterDataByYear(year)"
-          class="px-4 py-2 bg-gray-800 text-white border border-white rounded-md hover:bg-gray-700 transform transition-transform duration-300 hover:scale-105"
+          class="btn btn-outline btn-secondary"
         >
           {{ year }}
         </button>
@@ -172,4 +198,9 @@ onMounted(async () => {
       </div>
     </div>
   </div>
+  <footer class="footer footer-center bg-base-100 text-white p-4">
+    <aside>
+      <p>Made by Dr. Agorille</p>
+    </aside>
+  </footer>
 </template>
