@@ -178,13 +178,6 @@ const createChart = () => {
                 100 - Math.min(50, count * 5)
               }, ${255 - Math.min(100, count * 10)}, 0.9)`
           ),
-          borderColor: banCounts.value.map(
-            (count) =>
-              `rgba(${Math.min(255, count * 20)}, ${
-                100 - Math.min(50, count * 5)
-              }, ${255 - Math.min(100, count * 10)}, 1)`
-          ),
-          borderWidth: 1,
         },
       ],
     },
