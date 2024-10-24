@@ -21,6 +21,7 @@ const totalProfiles = ref(0);
 const totalBanned = ref(0);
 const selectedYear = ref(null);
 const totalBannedInYear = ref(0);
+const chartLoading = ref(true);
 
 // Function to fetch ban data
 const fetchBans = async () => {
@@ -31,9 +32,9 @@ const fetchBans = async () => {
     let fetchMore = true;
 
     while (fetchMore) {
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from("profil")
-        .select("ban, ban_date")
+        .select("ban, ban_date", { count: "exact" })
         .filter("ban", "eq", true)
         .range(start, start + limit - 1);
 
@@ -44,6 +45,9 @@ const fetchBans = async () => {
       if (data.length > 0) {
         allResults = allResults.concat(data);
         start += limit;
+        if (start >= count) {
+          fetchMore = false;
+        }
       } else {
         fetchMore = false;
       }
@@ -150,6 +154,7 @@ const filterDataByYear = (year = null) => {
       createChart();
     });
   }
+  chartLoading.value = false;
 };
 
 // Creating the chart
@@ -165,6 +170,9 @@ const createChart = () => {
     return;
   }
 
+  if (chartInstance) {
+    chartInstance.destroy();
+  }
   chartInstance = new Chart(ctx, {
     type: "bar",
     data: {
@@ -226,15 +234,19 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="loading" class="flex items-center justify-center min-h-screen">
-    <div class="loading loading-dots loading-lg text-primary"></div>
+  <div v-show="loading" class="flex items-center justify-center min-h-screen">
+    <div class="loading loading-dots text-primary w-24"></div>
   </div>
-  <div v-else class="bg-gray-900 text-white mb-6">
+  <div v-show="!loading" class="bg-gray-900 text-white mb-6">
     <div class="flex flex-col items-center justify-center">
       <div class="m-6 flex space-x-4">
         <button
           @click="filterDataByYear(null)"
-          class="btn btn-outline btn-secondary"
+          :class="[
+            'btn',
+            selectedYear === null ? 'btn-active' : 'btn-outline',
+            'btn-secondary',
+          ]"
         >
           All years
         </button>
@@ -242,7 +254,11 @@ onMounted(async () => {
           v-for="year in availableYears"
           :key="year"
           @click="filterDataByYear(year)"
-          class="btn btn-outline btn-secondary"
+          :class="[
+            'btn',
+            selectedYear === year ? 'btn-active' : 'btn-outline',
+            'btn-secondary',
+          ]"
         >
           {{ year }}
         </button>
@@ -252,17 +268,19 @@ onMounted(async () => {
       </div>
     </div>
     <div class="flex items-center justify-center">
-      <div class="stats shadow mt-6">
+      <div class="stats shadow mt-6 text-white">
         <div class="stat">
-          <div class="stat-title">Total profiles tracked</div>
+          <div class="stat-title text-white">Total profiles tracked</div>
           <div class="stat-value">{{ totalProfiles }}</div>
         </div>
         <div class="stat">
-          <div class="stat-title">Total banned users</div>
+          <div class="stat-title text-white">Total banned users</div>
           <div class="stat-value">{{ totalBanned }}</div>
         </div>
         <div class="stat">
-          <div class="stat-title">Banned in {{ selectedYear ?? "total" }}</div>
+          <div class="stat-title text-white">
+            Banned in {{ selectedYear ?? "total" }}
+          </div>
           <div class="stat-value">{{ totalBannedInYear }}</div>
         </div>
       </div>
