@@ -3,10 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 import { onMounted, ref } from "vue";
 import { Chart, registerables } from "chart.js";
 
-// Enregistrement des composants nécessaires de Chart.js
+// Registering necessary components of Chart.js
 Chart.register(...registerables);
 
-// Configuration de Supabase à partir des variables d'environnement
+// Supabase configuration from environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -16,38 +16,77 @@ const banCounts = ref([]);
 let allData = [];
 let chartInstance = null;
 const availableYears = ref([]);
+const totalProfiles = ref(0);
+const totalBanned = ref(0);
+const selectedYear = ref(null);
+const totalBannedInYear = ref(0);
 
-// Fonction pour récupérer les données des bans
+// Function to fetch ban data
 const fetchBans = async () => {
   try {
-    const { data, error } = await supabase
-      .from("profil")
-      .select("ban, ban_date")
-      .filter("ban", "eq", true);
+    let allResults = [];
+    let start = 0;
+    const limit = 1000;
+    let fetchMore = true;
 
-    if (error) {
-      throw new Error(
-        "Erreur lors de la récupération des données: " + error.message
-      );
+    while (fetchMore) {
+      const { data, error } = await supabase
+        .from("profil")
+        .select("ban, ban_date")
+        .filter("ban", "eq", true)
+        .range(start, start + limit - 1);
+
+      if (error) {
+        throw new Error("Error fetching data: " + error.message);
+      }
+
+      if (data.length > 0) {
+        allResults = allResults.concat(data);
+        start += limit;
+      } else {
+        fetchMore = false;
+      }
     }
 
-    if (!data) {
-      console.warn("Aucune donnée reçue de la base de données.");
-      return;
-    }
-
-    allData = data;
+    allData = allResults;
     extractAvailableYears();
     filterDataByYear();
   } catch (err) {
-    console.error(
-      "Erreur réseau ou autre problème lors de la récupération des données",
-      err
-    );
+    console.error("Network error or other issue fetching data", err);
   }
 };
 
-// Extraire les années disponibles
+// Function to fetch summary data
+const fetchSummaryData = async () => {
+  try {
+    const { count, error } = await supabase
+      .from("profil")
+      .select("id", { count: "exact" });
+
+    if (error) {
+      throw new Error("Error fetching total profiles: " + error.message);
+    }
+
+    totalProfiles.value = count;
+
+    const { count: bannedCount, error: bannedError } = await supabase
+      .from("profil")
+      .select("id", { count: "exact" })
+      .eq("ban", true);
+
+    if (bannedError) {
+      throw new Error(
+        "Error fetching banned users count: " + bannedError.message
+      );
+    }
+
+    totalBanned.value = bannedCount;
+  } catch (err) {
+    console.error("Network error or other issue fetching summary data", err);
+  }
+};
+
+// Extract available years
 const extractAvailableYears = () => {
   const years = new Set();
   allData.forEach((record) => {
@@ -59,11 +98,12 @@ const extractAvailableYears = () => {
   availableYears.value = Array.from(years).sort((a, b) => a - b);
 };
 
-// Filtrer les données par année
+// Filter data by year
 const filterDataByYear = (year = null) => {
   const dates = [];
   const counts = [];
   const dateMap = {};
+  selectedYear.value = year;
 
   allData.forEach((record) => {
     if (record.ban === true) {
@@ -79,7 +119,7 @@ const filterDataByYear = (year = null) => {
     }
   });
 
-  // Trier les dates du plus vieux au plus récent
+  // Sort dates from oldest to newest
   const sortedDates = Object.keys(dateMap).sort(
     (a, b) => new Date(a) - new Date(b)
   );
@@ -91,13 +131,16 @@ const filterDataByYear = (year = null) => {
 
   banDates.value = dates;
   banCounts.value = counts;
+  totalBannedInYear.value = counts.reduce((a, b) => a + b, 0);
   if (chartInstance) {
     chartInstance.destroy();
   }
-  createChart();
+  nextTick(() => {
+    createChart();
+  });
 };
 
-// Création du graphique
+// Creating the chart
 const createChart = () => {
   const canvasElement = document.getElementById("banChart");
   if (!canvasElement) {
@@ -164,13 +207,24 @@ const createChart = () => {
   });
 };
 
+const loading = ref(true);
+
+import { nextTick } from "vue";
+
 onMounted(async () => {
   await fetchBans();
+  await fetchSummaryData();
+  loading.value = false;
+  await nextTick();
+  createChart();
 });
 </script>
 
 <template>
-  <div class="bg-gray-900 text-white min-h-screen">
+  <div v-if="loading" class="flex items-center justify-center min-h-screen">
+    <div class="loading loading-spinner text-primary"></div>
+  </div>
+  <div v-else class="bg-gray-900 text-white min-h-screen">
     <div class="navbar bg-base-100">
       <div class="flex-1">
         <a class="btn btn-ghost normal-case text-xl">Steam Ban Tracker Web</a>
@@ -182,7 +236,7 @@ onMounted(async () => {
           @click="filterDataByYear(null)"
           class="btn btn-outline btn-secondary"
         >
-          Tous les années
+          All years
         </button>
         <button
           v-for="year in availableYears"
@@ -195,6 +249,20 @@ onMounted(async () => {
       </div>
       <div class="w-full px-6">
         <canvas id="banChart" height="600"></canvas>
+      </div>
+    </div>
+    <div class="stats shadow mt-6">
+      <div class="stat">
+        <div class="stat-title">Total profiles tracked</div>
+        <div class="stat-value">{{ totalProfiles }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-title">Total banned users</div>
+        <div class="stat-value">{{ totalBanned }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-title">Banned in {{ selectedYear ?? "total" }}</div>
+        <div class="stat-value">{{ totalBannedInYear }}</div>
       </div>
     </div>
   </div>
