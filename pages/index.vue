@@ -238,46 +238,74 @@ onMounted(async () => {
     <div class="loading loading-dots text-primary w-24"></div>
   </div>
   <div v-show="!loading" class="bg-gray-900 text-white mb-6">
-    <div class="flex flex-col items-center justify-center">
-      <div class="m-6 flex space-x-4">
-        <button
-          @click="filterDataByYear(null)"
-          :class="[
-            'btn',
-            selectedYear === null ? 'btn-active' : 'btn-outline',
-            'btn-secondary',
-          ]"
-        >
-          All years
-        </button>
-        <button
-          v-for="year in availableYears"
-          :key="year"
-          @click="filterDataByYear(year)"
-          :class="[
-            'btn',
-            selectedYear === year ? 'btn-active' : 'btn-outline',
-            'btn-secondary',
-          ]"
-        >
-          {{ year }}
-        </button>
+    <div class="flex flex-col items-center justify-center w-full">
+      <div class="p-4 w-3/4">
+        <div class="sm:hidden w-full text-center">
+          <select
+            class="select select-bordered w-full"
+            @change="
+              filterDataByYear(
+                $event.target.value === 'null'
+                  ? null
+                  : parseInt($event.target.value)
+              )
+            "
+          >
+            <option value="null" :selected="selectedYear === null">
+              All years
+            </option>
+            <option
+              v-for="year in availableYears"
+              :key="year"
+              :value="year"
+              :selected="selectedYear === year"
+            >
+              {{ year }}
+            </option>
+          </select>
+        </div>
+        <div class="hidden sm:flex flex-wrap justify-center gap-4">
+          <button
+            @click="filterDataByYear(null)"
+            :class="[
+              'btn',
+              selectedYear === null ? 'btn-active' : 'btn-outline',
+              'btn-secondary',
+            ]"
+          >
+            All years
+          </button>
+          <button
+            v-for="year in availableYears"
+            :key="year"
+            @click="filterDataByYear(year)"
+            :class="[
+              'btn',
+              selectedYear === year ? 'btn-active' : 'btn-outline',
+              'btn-secondary',
+            ]"
+          >
+            {{ year }}
+          </button>
+        </div>
       </div>
-      <div class="w-full px-6">
+      <div class="w-full px-4 sm:px-6 lg:px-8">
         <canvas id="banChart" height="600"></canvas>
       </div>
     </div>
     <div class="flex items-center justify-center">
-      <div class="stats shadow mt-6 text-white">
-        <div class="stat">
+      <div
+        class="stats stats-vertical sm:stats-horizontal shadow mt-6 text-white w-full sm:w-auto mx-4 sm:mx-0"
+      >
+        <div class="stat text-center">
           <div class="stat-title text-white">Total profiles tracked</div>
           <div class="stat-value">{{ totalProfiles }}</div>
         </div>
-        <div class="stat">
+        <div class="stat text-center">
           <div class="stat-title text-white">Total banned users</div>
           <div class="stat-value">{{ totalBanned }}</div>
         </div>
-        <div class="stat">
+        <div class="stat text-center">
           <div class="stat-title text-white">
             Banned in {{ selectedYear ?? "total" }}
           </div>
