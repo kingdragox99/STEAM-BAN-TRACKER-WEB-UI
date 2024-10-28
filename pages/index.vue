@@ -32,9 +32,9 @@ const fetchBans = async () => {
     let fetchMore = true;
 
     while (fetchMore) {
-      const { data, error, count } = await supabase
+      const { data, error } = await supabase
         .from("profil")
-        .select("ban, ban_date", { count: "exact" })
+        .select("ban, ban_date")
         .filter("ban", "eq", true)
         .range(start, start + limit - 1);
 
@@ -45,9 +45,6 @@ const fetchBans = async () => {
       if (data.length > 0) {
         allResults = allResults.concat(data);
         start += limit;
-        if (start >= count) {
-          fetchMore = false;
-        }
       } else {
         fetchMore = false;
       }
@@ -297,15 +294,15 @@ onMounted(async () => {
       <div
         class="stats stats-vertical sm:stats-horizontal shadow mt-6 text-white w-full sm:w-auto mx-4 sm:mx-0"
       >
-        <div class="stat text-center">
+        <div class="stat text-center sm:text-start">
           <div class="stat-title text-white">Total profiles tracked</div>
           <div class="stat-value">{{ totalProfiles }}</div>
         </div>
-        <div class="stat text-center">
+        <div class="stat text-center sm:text-start">
           <div class="stat-title text-white">Total banned users</div>
           <div class="stat-value">{{ totalBanned }}</div>
         </div>
-        <div class="stat text-center">
+        <div class="stat text-center sm:text-start">
           <div class="stat-title text-white">
             Banned in {{ selectedYear ?? "total" }}
           </div>
