@@ -1,5 +1,4 @@
 <script setup>
-import { SpeedInsights } from "@vercel/speed-insights/vue";
 import { createClient } from "@supabase/supabase-js";
 import { onMounted, ref } from "vue";
 import { Chart, registerables } from "chart.js";
@@ -13,7 +12,9 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const banDates = ref([]);
-const banCounts = ref([]);
+const vacBanCounts = ref([]);
+const gameBanCounts = ref([]);
+const unbanCounts = ref([]);
 let allData = [];
 let chartInstance = null;
 const availableYears = ref([]);
@@ -125,7 +126,9 @@ const calculateBanTypeCounts = () => {
 // Filter data by year
 const filterDataByYear = (year = null) => {
   const dates = [];
-  const counts = [];
+  const vacCounts = [];
+  const gameCounts = [];
+  const unbanCountsArr = [];
   const dateMap = {};
   selectedYear.value = year;
 
@@ -135,9 +138,14 @@ const filterDataByYear = (year = null) => {
       const yearOnly = new Date(record.ban_date).getFullYear();
       if (year === null || yearOnly === year) {
         if (!dateMap[dateOnly]) {
-          dateMap[dateOnly] = 1;
-        } else {
-          dateMap[dateOnly]++;
+          dateMap[dateOnly] = { vac: 0, game: 0, unban: 0 };
+        }
+        if (record.ban_type.trim().toLowerCase() === "vac ban") {
+          dateMap[dateOnly].vac++;
+        } else if (record.ban_type.trim().toLowerCase() === "game ban") {
+          dateMap[dateOnly].game++;
+        } else if (record.ban_type.trim().toLowerCase() === "unban") {
+          dateMap[dateOnly].unban++;
         }
       }
     }
@@ -150,23 +158,26 @@ const filterDataByYear = (year = null) => {
 
   sortedDates.forEach((date) => {
     dates.push(date);
-    counts.push(dateMap[date]);
+    vacCounts.push(dateMap[date].vac);
+    gameCounts.push(dateMap[date].game);
+    unbanCountsArr.push(dateMap[date].unban);
   });
 
   banDates.value = dates;
-  banCounts.value = counts;
-  totalBannedInYear.value = counts.reduce((a, b) => a + b, 0);
+  vacBanCounts.value = vacCounts;
+  gameBanCounts.value = gameCounts;
+  unbanCounts.value = unbanCountsArr;
+  totalBannedInYear.value =
+    vacCounts.reduce((a, b) => a + b, 0) +
+    gameCounts.reduce((a, b) => a + b, 0) +
+    unbanCountsArr.reduce((a, b) => a + b, 0);
 
   if (chartInstance) {
     // Update chart instead of destroying it for better performance
     chartInstance.data.labels = banDates.value;
-    chartInstance.data.datasets[0].data = banCounts.value;
-    chartInstance.data.datasets[0].backgroundColor = banCounts.value.map(
-      (count) =>
-        `rgba(${Math.min(255, count * 20)}, ${100 - Math.min(50, count * 5)}, ${
-          255 - Math.min(100, count * 10)
-        }, 0.9)`
-    );
+    chartInstance.data.datasets[0].data = vacBanCounts.value;
+    chartInstance.data.datasets[1].data = gameBanCounts.value;
+    chartInstance.data.datasets[2].data = unbanCounts.value;
     chartInstance.update();
   } else {
     nextTick(() => {
@@ -192,19 +203,26 @@ const createChart = () => {
   if (chartInstance) {
     chartInstance.destroy();
   }
+
   chartInstance = new Chart(ctx, {
     type: "bar",
     data: {
       labels: banDates.value,
       datasets: [
         {
-          data: banCounts.value,
-          backgroundColor: banCounts.value.map(
-            (count) =>
-              `rgba(${Math.min(255, count * 20)}, ${
-                100 - Math.min(50, count * 5)
-              }, ${255 - Math.min(100, count * 10)}, 0.9)`
-          ),
+          label: "VAC Ban",
+          data: vacBanCounts.value,
+          backgroundColor: "rgba(233, 46, 144, 1)",
+        },
+        {
+          label: "Game Ban",
+          data: gameBanCounts.value,
+          backgroundColor: "rgba(21, 91, 224, 1)",
+        },
+        {
+          label: "Unban",
+          data: unbanCounts.value,
+          backgroundColor: "rgba(46, 233, 135, 1)",
         },
       ],
     },
@@ -232,7 +250,10 @@ const createChart = () => {
       },
       plugins: {
         legend: {
-          display: false,
+          display: true,
+          labels: {
+            color: "#ffffff",
+          },
         },
       },
     },
