@@ -22,6 +22,7 @@ const totalBanned = ref(0);
 const selectedYear = ref(null);
 const totalBannedInYear = ref(0);
 const chartLoading = ref(true);
+const banTypeCounts = ref({ vacBan: 0, gameBan: 0, tradeBan: 0, unban: 0 });
 
 // Function to fetch ban data
 const fetchBans = async () => {
@@ -34,7 +35,7 @@ const fetchBans = async () => {
     while (fetchMore) {
       const { data, error } = await supabase
         .from("profil")
-        .select("ban, ban_date")
+        .select("ban, ban_date, ban_type")
         .filter("ban", "eq", true)
         .range(start, start + limit - 1);
 
@@ -51,6 +52,7 @@ const fetchBans = async () => {
     }
 
     allData = allResults;
+    calculateBanTypeCounts();
     extractAvailableYears();
     filterDataByYear();
   } catch (err) {
@@ -98,6 +100,26 @@ const extractAvailableYears = () => {
     }
   });
   availableYears.value = Array.from(years).sort((a, b) => a - b);
+};
+
+// Calculate counts for each ban type
+const calculateBanTypeCounts = () => {
+  const counts = { vacBan: 0, gameBan: 0, tradeBan: 0, unban: 0 };
+  allData.forEach((record) => {
+    if (record.ban_type) {
+      const normalizedType = record.ban_type.trim().toLowerCase();
+      if (normalizedType === "vac ban") {
+        counts.vacBan++;
+      } else if (normalizedType === "game ban") {
+        counts.gameBan++;
+      } else if (normalizedType === "trade ban") {
+        counts.tradeBan++;
+      } else if (normalizedType === "unban") {
+        counts.unban++;
+      }
+    }
+  });
+  banTypeCounts.value = counts;
 };
 
 // Filter data by year
@@ -290,23 +312,47 @@ onMounted(async () => {
         <canvas id="banChart" height="600"></canvas>
       </div>
     </div>
-    <div class="flex items-center justify-center">
-      <div
-        class="stats stats-vertical sm:stats-horizontal shadow mt-6 text-white w-full sm:w-auto mx-4 sm:mx-0"
-      >
-        <div class="stat text-center sm:text-start">
-          <div class="stat-title text-white">Total profiles tracked</div>
-          <div class="stat-value">{{ totalProfiles }}</div>
-        </div>
-        <div class="stat text-center sm:text-start">
-          <div class="stat-title text-white">Total banned users</div>
-          <div class="stat-value">{{ totalBanned }}</div>
-        </div>
-        <div class="stat text-center sm:text-start">
-          <div class="stat-title text-white">
-            Banned in {{ selectedYear ?? "total" }}
+    <div class="flex flex-col justify-center w-full gap-4 lg:flex-row">
+      <div class="flex items-center justify-center">
+        <div
+          class="stats stats-vertical lg:stats-horizontal shadow mt-6 text-white w-full mx-4 lg:mx-0"
+        >
+          <div class="stat text-center lg:text-start">
+            <div class="stat-title text-white">Total profiles tracked</div>
+            <div class="stat-value">{{ totalProfiles }}</div>
           </div>
-          <div class="stat-value">{{ totalBannedInYear }}</div>
+          <div class="stat text-center lg:text-start">
+            <div class="stat-title text-white">Total banned users</div>
+            <div class="stat-value">{{ totalBanned }}</div>
+          </div>
+          <div class="stat text-center lg:text-start">
+            <div class="stat-title text-white">
+              Banned in {{ selectedYear ?? "total" }}
+            </div>
+            <div class="stat-value">{{ totalBannedInYear }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center justify-center">
+        <div
+          class="stats stats-vertical lg:stats-horizontal shadow mt-6 text-white w-full mx-4 lg:mx-0"
+        >
+          <div class="stat text-center lg:text-start">
+            <div class="stat-title text-white">VAC Ban</div>
+            <div class="stat-value">{{ banTypeCounts.vacBan }}</div>
+          </div>
+          <div class="stat text-center lg:text-start">
+            <div class="stat-title text-white">Game Ban</div>
+            <div class="stat-value">{{ banTypeCounts.gameBan }}</div>
+          </div>
+          <div class="stat text-center lg:text-start">
+            <div class="stat-title text-white">Trade Ban</div>
+            <div class="stat-value">{{ banTypeCounts.tradeBan }}</div>
+          </div>
+          <div class="stat text-center lg:text-start">
+            <div class="stat-title text-white">Unban</div>
+            <div class="stat-value">{{ banTypeCounts.unban }}</div>
+          </div>
         </div>
       </div>
     </div>
