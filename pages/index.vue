@@ -1,12 +1,10 @@
 <script setup>
 import { createClient } from "@supabase/supabase-js";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, onBeforeUnmount, nextTick } from "vue";
 import { Chart, registerables } from "chart.js";
 
-// Registering necessary components of Chart.js
 Chart.register(...registerables);
 
-// Supabase configuration from environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -25,22 +23,22 @@ const totalBannedInYear = ref(0);
 const chartLoading = ref(true);
 const banTypeCounts = ref({ vacBan: 0, gameBan: 0, tradeBan: 0, unban: 0 });
 
-// Function to fetch ban data
 const fetchBans = async () => {
   try {
     let allResults = [];
     let start = 0;
-    let limit = 1000;
+    const limit = 1000;
     let fetchMore = true;
 
     while (fetchMore) {
       const { data, error } = await supabase
         .from("profil")
         .select("ban, ban_date, ban_type")
-        .filter("ban", "eq", true)
+        .eq("ban", true)
         .range(start, start + limit - 1);
 
       if (error) {
+        console.error("Error fetching data: ", error);
         throw new Error("Error fetching data: " + error.message);
       }
 
@@ -61,7 +59,6 @@ const fetchBans = async () => {
   }
 };
 
-// Function to fetch summary data
 const fetchSummaryData = async () => {
   try {
     const { count, error } = await supabase
@@ -69,6 +66,7 @@ const fetchSummaryData = async () => {
       .select("id", { count: "exact" });
 
     if (error) {
+      console.error("Error fetching total profiles: ", error);
       throw new Error("Error fetching total profiles: " + error.message);
     }
 
@@ -80,6 +78,7 @@ const fetchSummaryData = async () => {
       .eq("ban", true);
 
     if (bannedError) {
+      console.error("Error fetching banned users count: ", bannedError);
       throw new Error(
         "Error fetching banned users count: " + bannedError.message
       );
@@ -91,7 +90,6 @@ const fetchSummaryData = async () => {
   }
 };
 
-// Extract available years
 const extractAvailableYears = () => {
   const years = new Set();
   allData.forEach((record) => {
@@ -103,7 +101,6 @@ const extractAvailableYears = () => {
   availableYears.value = Array.from(years).sort((a, b) => a - b);
 };
 
-// Calculate counts for each ban type
 const calculateBanTypeCounts = () => {
   const counts = { vacBan: 0, gameBan: 0, tradeBan: 0, unban: 0 };
   allData.forEach((record) => {
@@ -123,7 +120,6 @@ const calculateBanTypeCounts = () => {
   banTypeCounts.value = counts;
 };
 
-// Filter data by year
 const filterDataByYear = (year = null) => {
   const dates = [];
   const vacCounts = [];
@@ -151,7 +147,6 @@ const filterDataByYear = (year = null) => {
     }
   });
 
-  // Sort dates from oldest to newest
   const sortedDates = Object.keys(dateMap).sort(
     (a, b) => new Date(a) - new Date(b)
   );
@@ -173,11 +168,11 @@ const filterDataByYear = (year = null) => {
     unbanCountsArr.reduce((a, b) => a + b, 0);
 
   if (chartInstance) {
-    // Update chart instead of destroying it for better performance
     chartInstance.data.labels = banDates.value;
     chartInstance.data.datasets[0].data = vacBanCounts.value;
     chartInstance.data.datasets[1].data = gameBanCounts.value;
     chartInstance.data.datasets[2].data = unbanCounts.value;
+    updateChartColors();
     chartInstance.update();
   } else {
     nextTick(() => {
@@ -187,7 +182,6 @@ const filterDataByYear = (year = null) => {
   chartLoading.value = false;
 };
 
-// Creating the chart
 const createChart = () => {
   const canvasElement = document.getElementById("banChart");
   if (!canvasElement) {
@@ -233,18 +227,18 @@ const createChart = () => {
         y: {
           beginAtZero: true,
           grid: {
-            color: "rgba(255, 255, 255, 0.1)",
+            color: getGridColor(),
           },
           ticks: {
-            color: "#ffffff",
+            color: getTextColor(),
           },
         },
         x: {
           grid: {
-            color: "rgba(255, 255, 255, 0.1)",
+            color: getGridColor(),
           },
           ticks: {
-            color: "#ffffff",
+            color: getTextColor(),
           },
         },
       },
@@ -252,7 +246,7 @@ const createChart = () => {
         legend: {
           display: true,
           labels: {
-            color: "#ffffff",
+            color: getTextColor(),
           },
         },
       },
@@ -260,9 +254,57 @@ const createChart = () => {
   });
 };
 
-const loading = ref(true);
+const getTextColor = () => {
+  if (typeof window !== "undefined") {
+    const theme =
+      document.querySelector("html").getAttribute("data-theme") || "dark";
+    return theme === "light" ? "#000000" : "#ffffff";
+  }
+  return "#000000";
+};
 
-import { nextTick } from "vue";
+const getGridColor = () => {
+  if (typeof window !== "undefined") {
+    const theme =
+      document.querySelector("html").getAttribute("data-theme") || "dark";
+    return theme === "light"
+      ? "rgba(0, 0, 0, 0.1)"
+      : "rgba(255, 255, 255, 0.1)";
+  }
+  return "rgba(0, 0, 0, 0.1)";
+};
+
+const updateChartColors = () => {
+  if (chartInstance) {
+    chartInstance.options.scales.x.ticks.color = getTextColor();
+    chartInstance.options.scales.y.ticks.color = getTextColor();
+    chartInstance.options.plugins.legend.labels.color = getTextColor();
+    chartInstance.options.scales.x.grid.color = getGridColor();
+    chartInstance.options.scales.y.grid.color = getGridColor();
+  }
+};
+
+onMounted(() => {
+  const handleThemeChange = () => {
+    const newTheme = document.documentElement.getAttribute("data-theme");
+    updateChartColors();
+    if (chartInstance) {
+      chartInstance.update();
+    }
+  };
+
+  const observer = new MutationObserver(handleThemeChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
+
+  onBeforeUnmount(() => {
+    observer.disconnect();
+  });
+});
+
+const loading = ref(true);
 
 onMounted(async () => {
   await fetchBans();
@@ -277,7 +319,7 @@ onMounted(async () => {
   <div v-show="loading" class="flex items-center justify-center min-h-screen">
     <div class="loading loading-dots text-primary w-24"></div>
   </div>
-  <div v-show="!loading" class="bg-gray-900 text-white mb-6">
+  <div v-show="!loading">
     <div class="flex flex-col items-center justify-center w-full">
       <div class="p-4 w-3/4">
         <div class="sm:hidden w-full text-center">
@@ -333,21 +375,21 @@ onMounted(async () => {
         <canvas id="banChart" height="600"></canvas>
       </div>
     </div>
-    <div class="flex flex-col justify-center w-full gap-4 lg:flex-row">
+    <div class="flex flex-col justify-center w-full gap-4 mb-6 lg:flex-row">
       <div class="flex items-center justify-center">
         <div
-          class="stats stats-vertical lg:stats-horizontal shadow mt-6 text-white w-full mx-4 lg:mx-0"
+          class="stats stats-vertical lg:stats-horizontal shadow mt-6 w-full mx-4 lg:mx-0"
         >
           <div class="stat text-center lg:text-start">
-            <div class="stat-title text-white">Total profiles tracked</div>
+            <div class="stat-title">Total profiles tracked</div>
             <div class="stat-value">{{ totalProfiles }}</div>
           </div>
           <div class="stat text-center lg:text-start">
-            <div class="stat-title text-white">Total banned users</div>
+            <div class="stat-title">Total banned users</div>
             <div class="stat-value">{{ totalBanned }}</div>
           </div>
           <div class="stat text-center lg:text-start">
-            <div class="stat-title text-white">
+            <div class="stat-title">
               Banned in {{ selectedYear ?? "total" }}
             </div>
             <div class="stat-value">{{ totalBannedInYear }}</div>
@@ -356,22 +398,22 @@ onMounted(async () => {
       </div>
       <div class="flex items-center justify-center">
         <div
-          class="stats stats-vertical lg:stats-horizontal shadow mt-6 text-white w-full mx-4 lg:mx-0"
+          class="stats stats-vertical lg:stats-horizontal shadow mt-6 w-full mx-4 lg:mx-0"
         >
           <div class="stat text-center lg:text-start">
-            <div class="stat-title text-white">VAC Ban</div>
+            <div class="stat-title">VAC Ban</div>
             <div class="stat-value">{{ banTypeCounts.vacBan }}</div>
           </div>
           <div class="stat text-center lg:text-start">
-            <div class="stat-title text-white">Game Ban</div>
+            <div class="stat-title">Game Ban</div>
             <div class="stat-value">{{ banTypeCounts.gameBan }}</div>
           </div>
           <div class="stat text-center lg:text-start">
-            <div class="stat-title text-white">Trade Ban</div>
+            <div class="stat-title">Trade Ban</div>
             <div class="stat-value">{{ banTypeCounts.tradeBan }}</div>
           </div>
           <div class="stat text-center lg:text-start">
-            <div class="stat-title text-white">Unban</div>
+            <div class="stat-title">Unban</div>
             <div class="stat-value">{{ banTypeCounts.unban }}</div>
           </div>
         </div>
