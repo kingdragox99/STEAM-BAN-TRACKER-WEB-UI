@@ -108,7 +108,6 @@ onMounted(() => {
 </script>
 
 <template>
-  <charts />
   <div class="flex flex-col justify-center w-full gap-4 mb-6 lg:flex-row">
     <div class="flex items-center justify-center">
       <div
