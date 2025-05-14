@@ -151,14 +151,6 @@ onMounted(() => {
           <div class="stat-title animate-pulse">Loading...</div>
           <div class="stat-value animate-pulse">---</div>
         </div>
-        <div class="stat text-center lg:text-start">
-          <div class="stat-title animate-pulse">Loading...</div>
-          <div class="stat-value animate-pulse">---</div>
-        </div>
-        <div class="stat text-center lg:text-start">
-          <div class="stat-title animate-pulse">Loading...</div>
-          <div class="stat-value animate-pulse">---</div>
-        </div>
       </div>
       <div
         v-else
@@ -166,19 +158,11 @@ onMounted(() => {
       >
         <div class="stat text-center lg:text-start">
           <div class="stat-title">VAC Ban</div>
-          <div class="stat-value">{{ banTypeCounts.vacBan }}</div>
+          <div class="stat-value">{{ banTypeCounts?.vacBan || 0 }}</div>
         </div>
         <div class="stat text-center lg:text-start">
           <div class="stat-title">Game Ban</div>
-          <div class="stat-value">{{ banTypeCounts.gameBan }}</div>
-        </div>
-        <div class="stat text-center lg:text-start">
-          <div class="stat-title">Trade Ban</div>
-          <div class="stat-value">{{ banTypeCounts.tradeBan }}</div>
-        </div>
-        <div class="stat text-center lg:text-start">
-          <div class="stat-title">Unban</div>
-          <div class="stat-value">{{ banTypeCounts.unban }}</div>
+          <div class="stat-value">{{ banTypeCounts?.gameBan || 0 }}</div>
         </div>
       </div>
     </div>

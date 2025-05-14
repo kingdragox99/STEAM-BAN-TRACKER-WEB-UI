@@ -2,9 +2,17 @@
   <header class="footer footer-center bg-base-100 p-2">
     <div class="navbar bg-base-100">
       <div class="flex-1">
-        <a class="btn btn-ghost normal-case text-xl">Steam Ban Tracker Web</a>
+        <a href="/" class="btn btn-ghost normal-case text-xl"
+          >Steam Ban Tracker Web</a
+        >
       </div>
       <div class="flex-none">
+        <ul class="menu menu-horizontal px-1">
+          <li><a href="/" class="btn btn-ghost">Home</a></li>
+          <li>
+            <a href="/banned-players" class="btn btn-ghost">Banned Players</a>
+          </li>
+        </ul>
         <label class="swap swap-rotate">
           <input type="checkbox" @change="toggleTheme" />
           <svg
@@ -35,13 +43,18 @@
 export default {
   methods: {
     toggleTheme() {
-      const htmlElement = document.querySelector("html");
-      if (htmlElement.getAttribute("data-theme") === "light") {
-        htmlElement.setAttribute("data-theme", "dark");
-      } else {
-        htmlElement.setAttribute("data-theme", "light");
-      }
+      const theme =
+        document.querySelector("html").getAttribute("data-theme") === "light"
+          ? "dark"
+          : "light";
+      document.querySelector("html").setAttribute("data-theme", theme);
     },
+  },
+  mounted() {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      document.querySelector("html").setAttribute("data-theme", savedTheme);
+    }
   },
 };
 </script>
